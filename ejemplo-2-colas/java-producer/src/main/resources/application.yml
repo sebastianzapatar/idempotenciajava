@@ -1,0 +1,45 @@
+# ============================================
+# Configuración del servidor Java Producer
+# ============================================
+server:
+  port: 8081
+
+# ============================================
+# Configuración de Kafka
+# ============================================
+spring:
+  kafka:
+    # Dirección del broker de Kafka
+    bootstrap-servers: localhost:9092
+
+    # Configuración del productor
+    producer:
+      # Serializador para la clave del mensaje (Idempotency-Key)
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      # Serializador para el valor del mensaje (JSON del pago)
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+    # Configuración del consumidor (para escuchar respuestas)
+    consumer:
+      # Grupo de consumidores
+      group-id: java-producer-group
+      # Deserializador para la clave
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      # Deserializador para el valor
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      # Leer desde el inicio si no hay offset guardado
+      auto-offset-reset: earliest
+
+# ============================================
+# Configuración personalizada
+# ============================================
+app:
+  kafka:
+    # Topic donde se envían las solicitudes de pago
+    topic-requests: payment-requests
+    # Topic donde se reciben las respuestas del consumidor Go
+    topic-responses: payment-responses
+  # Tiempo máximo de espera por respuesta antes de reintentar (ms)
+  timeout-ms: 5000
+  # Número máximo de reintentos
+  max-retries: 3
