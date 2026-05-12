@@ -1,0 +1,33 @@
+# ============================================
+# Configuración del servidor
+# ============================================
+server:
+  port: 8080
+
+# ============================================
+# Configuración de la base de datos H2
+# ============================================
+spring:
+  datasource:
+    # URL de conexión a la base de datos H2 en memoria
+    url: jdbc:h2:mem:idempotencia_db
+    # Driver JDBC de H2
+    driver-class-name: org.h2.Driver
+    # Credenciales de acceso
+    username: sa
+    password: password
+
+  # Configuración de JPA / Hibernate
+  jpa:
+    # Dialecto de H2 para Hibernate
+    database-platform: org.hibernate.dialect.H2Dialect
+    # Crear/actualizar tablas automáticamente al iniciar
+    hibernate:
+      ddl-auto: update
+    # Mostrar las consultas SQL en consola (útil para debug)
+    show-sql: true
+
+  # Consola web de H2 (accesible en http://localhost:8080/h2-console)
+  h2:
+    console:
+      enabled: true

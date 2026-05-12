@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Idempotencia en el Desarrollo de Software - Universidad EIA</title>
+    <meta name="description" content="Presentación educativa sobre Idempotencia en el Desarrollo de Software para la Universidad EIA">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --eia-blue: #003366;
+            --eia-dark-blue: #001A38;
+            --eia-gold: #C09B42;
+            --eia-white: #FFFFFF;
+            --eia-light: #f8f9fa;
+            --text-dark: #1a1a2e;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--eia-white);
+            color: var(--eia-blue);
+            overflow: hidden;
+        }
+
+        /* =================== SLIDES =================== */
+        .slides-container {
+            display: flex;
+            transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            height: 100vh;
+        }
+
+        .slide {
+            min-width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 3rem 5rem;
+            background: var(--eia-white);
+            position: relative;
+        }
+
+        /* =================== HEADER BAR =================== */
+        .slide::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, var(--eia-blue) 0%, var(--eia-gold) 100%);
+        }
+
+        /* =================== TITLE SLIDE =================== */
+        .slide.title-slide {
+            background: var(--eia-white);
+            text-align: center;
+        }
+
+        .logo { max-width: 250px; margin-bottom: 2rem; }
+
+        h1 {
+            font-size: 3.2rem;
+            font-weight: 800;
+            color: var(--eia-blue);
+            margin-bottom: 1rem;
+            line-height: 1.2;
+        }
+
+        .subtitle {
+            font-size: 1.3rem;
+            color: #666;
+            font-weight: 300;
+            max-width: 700px;
+        }
+
+        /* =================== CONTENT SLIDES =================== */
+        h2 {
+            font-size: 2.4rem;
+            font-weight: 700;
+            color: var(--eia-blue);
+            margin-bottom: 1.5rem;
+            border-left: 5px solid var(--eia-gold);
+            padding-left: 1rem;
+            align-self: flex-start;
+        }
+
+        .content {
+            max-width: 1100px;
+            width: 100%;
+        }
+
+        p {
+            font-size: 1.25rem;
+            line-height: 1.8;
+            color: var(--text-dark);
+            margin-bottom: 1rem;
+        }
+
+        ul {
+            font-size: 1.2rem;
+            line-height: 1.8;
+            color: var(--text-dark);
+            padding-left: 1.5rem;
+        }
+
+        li { margin-bottom: 0.8rem; }
+
+        .highlight {
+            color: var(--eia-blue);
+            font-weight: 700;
+        }
+
+        .highlight-gold {
+            color: var(--eia-gold);
+            font-weight: 700;
+        }
+
+        .highlight-red {
+            color: #c0392b;
+            font-weight: 700;
+        }
+
+        /* =================== IMAGE SLIDES =================== */
+        .img-container {
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .img-container img {
+            max-width: 65%;
+            max-height: 55vh;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+        }
+
+        .img-caption {
+            font-size: 0.95rem;
+            color: #888;
+            margin-top: 0.5rem;
+            font-style: italic;
+        }
+
+        /* =================== TWO COLUMN =================== */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            width: 100%;
+            max-width: 1100px;
+        }
+
+        .col img {
+            max-width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+        }
+
+        /* =================== NAV =================== */
+        .nav {
+            position: fixed;
+            bottom: 25px;
+            right: 30px;
+            display: flex;
+            gap: 12px;
+            z-index: 100;
+            align-items: center;
+        }
+
+        .nav button {
+            background: var(--eia-blue);
+            color: var(--eia-white);
+            border: none;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            font-size: 1.3rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav button:hover { background: var(--eia-gold); }
+
+        .slide-counter {
+            font-size: 0.95rem;
+            color: var(--eia-blue);
+            font-weight: 600;
+            background: var(--eia-light);
+            padding: 8px 16px;
+            border-radius: 20px;
+        }
+
+        /* =================== REFERENCES =================== */
+        .references {
+            font-size: 0.95rem;
+            color: #888;
+        }
+
+        .references a {
+            color: var(--eia-blue);
+            text-decoration: none;
+        }
+
+        .references a:hover {
+            text-decoration: underline;
+            color: var(--eia-gold);
+        }
+
+        /* =================== CODE =================== */
+        code {
+            background: #eef2f7;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 1.05rem;
+            color: var(--eia-dark-blue);
+        }
+
+        /* =================== FOOTER =================== */
+        .slide-footer {
+            position: absolute;
+            bottom: 20px;
+            left: 40px;
+            font-size: 0.8rem;
+            color: #bbb;
+        }
+
+        /* =================== PROGRESS BAR =================== */
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: var(--eia-gold);
+            transition: width 0.6s ease;
+            z-index: 200;
+        }
+
+        /* =================== HELP TIP =================== */
+        .help-tip {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            font-size: 0.85rem;
+            color: #aaa;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<!-- =================== SLIDE 1: PORTADA =================== -->
+<div class="slides-container" id="slidesContainer">
+    <div class="slide title-slide">
+        <img src="https://www.eia.edu.co/wp-content/uploads/2023/07/Logo-principal-scaled.webp" alt="Logo Universidad EIA" class="logo">
+        <h1>Idempotencia en el<br>Desarrollo de Software</h1>
+        <p class="subtitle">Una guía esencial para entender cómo construir sistemas confiables, tolerantes a fallos y sin duplicación de datos.</p>
+        <div class="slide-footer">Universidad EIA · Ingeniería de Sistemas y Computación · 2026</div>
+    </div>
+
+    <!-- =================== SLIDE 2: QUÉ ES =================== -->
+    <div class="slide">
+        <div class="content">
+            <h2>¿Qué es la Idempotencia?</h2>
+            <p>La <span class="highlight">idempotencia</span> es una propiedad de una operación que garantiza que, <strong>sin importar cuántas veces se ejecute</strong>, el resultado final será exactamente el mismo que si se hubiera ejecutado una sola vez.</p>
+            <p>En matemáticas: <code>f(f(x)) = f(x)</code>. En software: si procesamos un evento o solicitud dos veces (por error de red, doble clic, reintentos automáticos), la segunda ejecución <strong>no debe alterar</strong> el estado del sistema más allá de lo que hizo la primera.</p>
+            <p>Es una técnica fundamental en sistemas distribuidos, APIs REST y procesamiento de pagos para <span class="highlight-gold">evitar la duplicación de datos y mantener la consistencia</span>.</p>
+        </div>
+        <div class="slide-footer">Universidad EIA · Idempotencia</div>
+    </div>
+
+    <!-- =================== SLIDE 3: MUNDO REAL =================== -->
+    <div class="slide">
+        <div class="content">
+            <h2>Idempotencia en el Mundo Real</h2>
+            <p>Botones idempotentes están en objetos del día a día: semáforos peatonales, botones de parada en buses y botones de ascensor. Presionarlos muchas veces <strong>no cambia el resultado</strong>.</p>
+            <div class="img-container">
+                <img src="img/idempotencia_mundo_real.png" alt="Ejemplos de idempotencia en el mundo real">
+                <div class="img-caption">Fuente: Basado en el artículo de FreeCodeCamp – "What is Idempotence?"</div>
+            </div>
+        </div>
+        <div class="slide-footer">Universidad EIA · Idempotencia</div>
+    </div>
+
+    <!-- =================== SLIDE 4: PARA QUÉ SIRVE =================== -->
+    <div class="slide">
+        <div class="content">
+            <h2>¿Para qué sirve?</h2>
+            <ul>
+                <li><span class="highlight">Garantiza consistencia de datos:</span> Evita la duplicación de registros o transacciones financieras. Un cliente no será cobrado dos veces por la misma compra.</li>
+                <li><span class="highlight">Reintentos seguros:</span> En sistemas distribuidos, los fallos de red son comunes. La idempotencia permite que el cliente reintente la misma solicitud sin efectos secundarios indeseados.</li>
+                <li><span class="highlight">Mejor experiencia de usuario:</span> Evita errores causados por el "doble clic" en botones de pago o al recargar una página (Patrón Post/Redirect/Get).</li>
+                <li><span class="highlight">Sistemas tolerantes a fallos:</span> Permite construir arquitecturas donde un mensaje puede ser entregado más de una vez (at-least-once delivery) sin comprometer la integridad.</li>
+            </ul>
+        </div>
+        <div class="slide-footer">Universidad EIA · Idempotencia</div>
+    </div>
+
+    <!-- =================== SLIDE 5: QUÉ PROBLEMA SOLUCIONA =================== -->
+    <div class="slide">
+        <div class="content">
+            <h2>¿Qué problema soluciona?</h2>
+            <p>Imagina un sistema de compras: un cliente tiene varios productos en su carrito y hace clic en <strong>"Comprar"</strong>. La red falla justo antes de recibir la confirmación, pero el servidor ya procesó el pago.</p>
+            <div class="img-container">
+                <img src="img/sin_idempotencia.png" alt="Diagrama: Sin idempotencia hay duplicación de registros">
+                <div class="img-caption">Sin idempotencia: el cliente reintenta y se crean dos cobros duplicados.</div>
+            </div>
+        </div>
+        <div class="slide-footer">Universidad EIA · Idempotencia</div>
+    </div>
+
+    <!-- =================== SLIDE 6: LA SOLUCIÓN =================== -->
+    <div class="slide">
+        <div class="content">
+            <h2>La Solución: Idempotency-Key</h2>
+            <p>Cada solicitud incluye un identificador único (<code>Idempotency-Key</code>). El servidor verifica si esa clave ya fue procesada. Si ya existe, devuelve el resultado original <strong>sin procesar de nuevo</strong>.</p>
+            <div class="img-container">
+                <img src="img/con_idempotencia.png" alt="Diagrama: Con idempotencia solo se procesa una vez">
+                <div class="img-caption">Con idempotencia: el reintento es seguro, solo existe un registro en la DB.</div>
+            </div>
+        </div>
+        <div class="slide-footer">Universidad EIA · Idempotencia</div>
+    </div>
+
+    <!-- =================== SLIDE 7: MÉTODOS HTTP =================== -->
+    <div class="slide">
+        <div class="content">
+            <h2>Idempotencia en APIs REST</h2>
+            <p>En las APIs REST, los métodos HTTP tienen diferentes niveles de idempotencia por naturaleza. <code>POST</code> no es idempotente, por lo que requiere un header <code>Idempotency-Key</code> como estrategia adicional.</p>
+            <div class="img-container">
+                <img src="img/tabla_http.png" alt="Tabla de métodos HTTP e idempotencia">
+                <div class="img-caption">Fuente: Basado en artículos de FreeCodeCamp y Medium – Idempotency in Software Design</div>
+            </div>
+        </div>
+        <div class="slide-footer">Universidad EIA · Idempotencia</div>
+    </div>
+
+    <!-- =================== SLIDE 8: PATRÓN PRG =================== -->
+    <div class="slide">
+        <div class="content">
+            <h2>Patrón Post/Redirect/Get (PRG)</h2>
+            <p>Este patrón convierte una operación POST en un GET idempotente. Tras procesar el formulario, el servidor redirige al navegador a una página de confirmación. Si el usuario recarga, solo repite el GET, no el POST original.</p>
+            <div class="img-container">
+                <img src="img/diagrama_prg.png" alt="Diagrama del patrón PRG">
+                <div class="img-caption">Fuente: Basado en el artículo de FreeCodeCamp – "What is Idempotence?"</div>
+            </div>
+        </div>
+        <div class="slide-footer">Universidad EIA · Idempotencia</div>
+    </div>
+
+    <!-- =================== SLIDE 9: COLAS DE MENSAJES =================== -->
+    <div class="slide">
+        <div class="content">
+            <h2>Idempotencia con Colas de Mensajes</h2>
+            <p>En sistemas distribuidos, las colas de mensajes pueden entregar el mismo mensaje más de una vez. Cada mensaje tiene un <code>Transaction ID</code> que se verifica contra una base de datos de IDs procesados antes de ejecutar la operación.</p>
+            <div class="img-container">
+                <img src="img/diagrama_mq.png" alt="Diagrama de idempotencia con colas de mensajes">
+                <div class="img-caption">Fuente: Basado en artículos de FreeCodeCamp y NetMentor</div>
+            </div>
+        </div>
+        <div class="slide-footer">Universidad EIA · Idempotencia</div>
+    </div>
+
+    <!-- =================== SLIDE 10: IMPLEMENTACIÓN =================== -->
+    <div class="slide">
+        <div class="content">
+            <h2>¿Cómo implementarlo?</h2>
+            <ul>
+                <li><span class="highlight">1. Agregar un identificador único</span> a cada solicitud o evento: <code>Idempotency-Key</code> (header en REST) o <code>MessageIdentifier</code> (en eventos de mensajería).</li>
+                <li><span class="highlight">2. Crear una tabla de claves procesadas</span> en la base de datos donde la clave primaria es el <code>IdempotentId</code>, con columnas opcionales de fecha, estado y resultado.</li>
+                <li><span class="highlight">3. Verificar antes de procesar:</span> Si la clave ya existe en la tabla, devolver el resultado almacenado. Si no existe, procesar la solicitud y guardar la clave junto con el resultado.</li>
+                <li><span class="highlight">4. Operación atómica:</span> El proceso de guardar el resultado y registrar la clave debe hacerse en una sola transacción para evitar estados inconsistentes.</li>
+                <li><span class="highlight">5. TTL (Tiempo de vida):</span> Considerar un tiempo de retención de las claves (24h a 7 días) para no crecer indefinidamente la tabla.</li>
+            </ul>
+        </div>
+        <div class="slide-footer">Universidad EIA · Idempotencia</div>
+    </div>
+
+    <!-- =================== SLIDE 11: CUÁNDO USARLO =================== -->
+    <div class="slide">
+        <div class="content">
+            <h2>¿Cuándo usarlo?</h2>
+            <ul>
+                <li>En <span class="highlight">APIs RESTful</span> que procesan pagos, crean órdenes de compra o registran usuarios. Especialmente en operaciones <code>POST</code>.</li>
+                <li>En <span class="highlight">Sistemas Distribuidos</span> con colas de mensajes (RabbitMQ, Kafka) donde un mensaje puede entregarse "al menos una vez" (at-least-once delivery).</li>
+                <li>En <span class="highlight">Pasarelas de pago</span> como Stripe o PayPal, donde cada cargo debe tener un ID único de transacción.</li>
+                <li>En <span class="highlight">Sistemas con Event Sourcing</span> donde los eventos se reproducen y no deben generar efectos duplicados.</li>
+                <li>En cualquier sistema donde un <span class="highlight">fallo de red</span> pueda causar que una solicitud se repita automáticamente (ej: timeouts con retry).</li>
+            </ul>
+        </div>
+        <div class="slide-footer">Universidad EIA · Idempotencia</div>
+    </div>
+
+    <!-- =================== SLIDE 12: QUÉ PASA SI NO SE USA =================== -->
+    <div class="slide">
+        <div class="content">
+            <h2>¿Qué pasa si NO se usa?</h2>
+            <ul>
+                <li><span class="highlight-red">Cobros dobles:</span> Un cliente es cargado dos veces por la misma compra. Pérdida de confianza y costos de reembolso.</li>
+                <li><span class="highlight-red">Registros fantasma:</span> Datos duplicados en la base de datos que corrompen reportes, métricas y auditorías.</li>
+                <li><span class="highlight-red">Inventario corrupto:</span> El stock de un producto se descuenta más veces de las reales, generando inconsistencias entre pedidos y existencias.</li>
+                <li><span class="highlight-red">Imposibilidad de reintentos:</span> No se pueden implementar reintentos automáticos de forma segura, disminuyendo la tolerancia a fallos del sistema.</li>
+                <li><span class="highlight-red">Sistemas frágiles:</span> Un simple timeout o desconexión momentánea puede desencadenar un bug difícil de rastrear.</li>
+            </ul>
+        </div>
+        <div class="slide-footer">Universidad EIA · Idempotencia</div>
+    </div>
+
+    <!-- =================== SLIDE 13: REFERENCIAS =================== -->
+    <div class="slide">
+        <div class="content">
+            <h2>Referencias</h2>
+            <div class="references">
+                <ul>
+                    <li><a href="https://www.freecodecamp.org/news/idempotence-explained/" target="_blank">FreeCodeCamp — "What is Idempotence? Explained with Real-World Examples"</a> por Daniel Adetunji</li>
+                    <li><a href="https://medium.com/@elijahechekwu/idempotency-in-software-design-8b89ef717b23" target="_blank">Medium — "Idempotency in Software Design"</a> por Elijah Echekwu</li>
+                    <li><a href="https://www.netmentor.es/entrada/idempotencia-desarrollo-software" target="_blank">NetMentor — "La idempotencia en el Desarrollo de Software"</a></li>
+                </ul>
+            </div>
+            <br>
+            <div style="text-align:center;">
+                <img src="https://www.eia.edu.co/wp-content/uploads/2023/07/Logo-principal-scaled.webp" alt="Logo EIA" class="logo">
+                <p style="font-size:1.1rem; color:#aaa;">Universidad EIA · Ingeniería de Sistemas y Computación · 2026</p>
+                <p style="font-size:1rem; color:#ccc;">Usa ← → para navegar entre diapositivas</p>
+            </div>
+        </div>
+        <div class="slide-footer">Universidad EIA · Idempotencia</div>
+    </div>
+</div>
+
+<!-- =================== NAVIGATION =================== -->
+<div class="nav">
+    <div class="slide-counter" id="slideCounter">1 / 13</div>
+    <button onclick="prevSlide()" title="Anterior (←)">◀</button>
+    <button onclick="nextSlide()" title="Siguiente (→)">▶</button>
+</div>
+
+<div class="help-tip">Usa las teclas ← → para navegar</div>
+
+<script>
+    let currentSlide = 0;
+    const totalSlides = document.querySelectorAll('.slide').length;
+    const container = document.getElementById('slidesContainer');
+    const counter = document.getElementById('slideCounter');
+    const progressBar = document.getElementById('progressBar');
+
+    function goToSlide(n) {
+        if (n < 0 || n >= totalSlides) return;
+        currentSlide = n;
+        container.style.transform = `translateX(-${currentSlide * 100}vw)`;
+        counter.textContent = `${currentSlide + 1} / ${totalSlides}`;
+        progressBar.style.width = `${((currentSlide + 1) / totalSlides) * 100}%`;
+    }
+
+    function nextSlide() { goToSlide(currentSlide + 1); }
+    function prevSlide() { goToSlide(currentSlide - 1); }
+
+    // Navegación con teclado
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+            e.preventDefault();
+            nextSlide();
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            prevSlide();
+        } else if (e.key === 'Home') {
+            e.preventDefault();
+            goToSlide(0);
+        } else if (e.key === 'End') {
+            e.preventDefault();
+            goToSlide(totalSlides - 1);
+        }
+    });
+
+    // Inicializar
+    goToSlide(0);
+</script>
+
+</body>
+</html>
