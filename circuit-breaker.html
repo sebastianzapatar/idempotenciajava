@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Circuit Breaker Pattern - Universidad EIA</title>
+    <meta name="description" content="Presentacion educativa sobre el patron Circuit Breaker en Microservicios para la Universidad EIA">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="slides.css">
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<div class="slides-container" id="slidesContainer">
+
+    <!-- SLIDE 1: PORTADA -->
+    <div class="slide title-slide">
+        <img src="https://www.eia.edu.co/wp-content/uploads/2023/07/Logo-principal-scaled.webp" alt="Logo Universidad EIA" class="logo">
+        <h1>Circuit Breaker Pattern<br>en Microservicios</h1>
+        <p class="subtitle">Un patron de arquitectura esencial para construir sistemas distribuidos resilientes, tolerantes a fallos y con alta disponibilidad.</p>
+        <div class="slide-footer">Universidad EIA · Ingenieria de Sistemas y Computacion · 2026</div>
+    </div>
+
+    <!-- SLIDE 2: QUE ES -->
+    <div class="slide">
+        <div class="content">
+            <h2>Que es el Circuit Breaker?</h2>
+            <p>El <span class="highlight">Circuit Breaker</span> (cortocircuito) es un <strong>patron de arquitectura</strong> que actua como intermediario entre un servicio que llama (caller) y un servicio destino (callee). Su proposito es <strong>detectar fallos y evitar que se propaguen</strong> en cascada por todo el sistema.</p>
+            <p>Funciona de forma analoga a un <span class="highlight-gold">fusible electrico</span>: cuando detecta una sobrecarga (fallos consecutivos, timeouts), "abre" el circuito para detener el flujo de peticiones hacia el servicio que esta fallando. A diferencia de un fusible fisico, este se puede <strong>restaurar automaticamente</strong> cuando el problema se resuelve.</p>
+            <p>Fue popularizado por <strong>Michael Nygard</strong> en su libro <em>"Release It!"</em> (2007) y es ampliamente utilizado en arquitecturas de microservicios por empresas como Netflix, Amazon y Google.</p>
+        </div>
+        <div class="slide-footer">Universidad EIA · Circuit Breaker</div>
+    </div>
+
+    <!-- SLIDE 3: EL PROBLEMA -->
+    <div class="slide">
+        <div class="content">
+            <h2>El Problema: Fallos en Cascada</h2>
+            <p>En sistemas distribuidos, las llamadas a servicios remotos pueden fallar por <span class="highlight">fallos transitorios</span>: red lenta, timeout, servicio sobrecargado o caido. Sin un mecanismo de proteccion, ocurre una <strong>cascada de fallos</strong>:</p>
+            <ul>
+                <li><span class="highlight-red">Hilos bloqueados:</span> Cada peticion fallida mantiene un hilo esperando hasta el timeout (30s, 60s...). Miles de usuarios = miles de hilos bloqueados.</li>
+                <li><span class="highlight-red">Agotamiento de recursos:</span> Memoria, conexiones a DB, pools de threads se agotan, afectando a otros servicios que comparten esos recursos.</li>
+                <li><span class="highlight-red">Efecto domino:</span> El fallo de un solo servicio puede tumbar todo el sistema: Servicio A falla → B no puede responder → C tambien cae.</li>
+                <li><span class="highlight-red">Reintentos agresivos:</span> Sin control, los clientes reenvian peticiones continuamente, empeorando la sobrecarga del servicio ya saturado.</li>
+            </ul>
+        </div>
+        <div class="slide-footer">Universidad EIA · Circuit Breaker</div>
+    </div>
+
+    <!-- SLIDE 4: DIAGRAMA SIN CB -->
+    <div class="slide">
+        <div class="content">
+            <h2>Sin Circuit Breaker</h2>
+            <p>Cuando no existe un Circuit Breaker, cada peticion hacia un servicio que esta fallando <strong>consume recursos inutil y peligrosamente</strong>. Los hilos se quedan esperando timeouts, la memoria se llena y otros servicios sanos comienzan a degradarse.</p>
+            <div class="img-container">
+                <img src="img/sin_circuit_breaker.png" alt="Diagrama: Sin Circuit Breaker hay cascada de fallos">
+                <div class="img-caption">Sin Circuit Breaker: los fallos se propagan y agotan los recursos del sistema completo.</div>
+            </div>
+        </div>
+        <div class="slide-footer">Universidad EIA · Circuit Breaker</div>
+    </div>
+
+    <!-- SLIDE 5: DIAGRAMA CON CB -->
+    <div class="slide">
+        <div class="content">
+            <h2>Con Circuit Breaker</h2>
+            <p>El Circuit Breaker se situa <strong>entre el cliente y el servicio</strong>. Cuando detecta fallos consecutivos, <span class="highlight-gold">"abre" el circuito</span> y retorna inmediatamente una respuesta de error o fallback, sin intentar la llamada real. Esto protege al sistema y da tiempo al servicio para recuperarse.</p>
+            <div class="img-container">
+                <img src="img/con_circuit_breaker.png" alt="Diagrama: Con Circuit Breaker el fallo es controlado">
+                <div class="img-caption">Con Circuit Breaker: las peticiones se bloquean rapidamente y se devuelve un fallback.</div>
+            </div>
+        </div>
+        <div class="slide-footer">Universidad EIA · Circuit Breaker</div>
+    </div>
+
+    <!-- SLIDE 6: ESTADOS -->
+    <div class="slide">
+        <div class="content">
+            <h2>Los 3 Estados del Circuit Breaker</h2>
+            <p>El Circuit Breaker funciona como una <strong>maquina de estados</strong> con tres estados. La nomenclatura viene de los circuitos electricos:</p>
+            <ul>
+                <li><span class="highlight-green">CLOSED (Cerrado):</span> Estado normal. Las peticiones fluyen hacia el servicio. El CB mantiene un <strong>contador de fallos</strong>. Si los fallos superan un umbral configurado, transiciona a OPEN.</li>
+                <li><span class="highlight-red">OPEN (Abierto):</span> El circuito esta "roto". <strong>Todas las peticiones fallan inmediatamente</strong> sin intentar contactar al servicio. Se inicia un temporizador de espera. Cuando expira, transiciona a HALF-OPEN.</li>
+                <li><span class="highlight-gold">HALF-OPEN (Semi-abierto):</span> Estado de prueba. Se permite pasar un <strong>numero limitado de peticiones</strong> para verificar si el servicio se recupero. Si las pruebas son exitosas → CLOSED. Si fallan → OPEN nuevamente.</li>
+            </ul>
+        </div>
+        <div class="slide-footer">Universidad EIA · Circuit Breaker</div>
+    </div>
+
+    <!-- SLIDE 7: DIAGRAMA DE ESTADOS -->
+    <div class="slide">
+        <div class="content">
+            <h2>Diagrama de Estados</h2>
+            <p>El ciclo de vida del Circuit Breaker muestra las transiciones entre estados basadas en el exito o fallo de las peticiones y los temporizadores configurados:</p>
+            <div class="img-container">
+                <img src="img/circuit_breaker_estados.png" alt="Diagrama de estados del Circuit Breaker">
+                <div class="img-caption">Maquina de estados: CLOSED → OPEN → HALF-OPEN → CLOSED (o de vuelta a OPEN).</div>
+            </div>
+        </div>
+        <div class="slide-footer">Universidad EIA · Circuit Breaker</div>
+    </div>
+
+    <!-- SLIDE 8: VENTAJAS -->
+    <div class="slide">
+        <div class="content">
+            <h2>Ventajas del Circuit Breaker</h2>
+            <ul>
+                <li><span class="highlight-green">Prevencion de fallos en cascada:</span> Aisla el servicio defectuoso e impide que su fallo se propague a otros componentes del sistema, protegiendo la estabilidad global.</li>
+                <li><span class="highlight-green">Fallo rapido (Fail-Fast):</span> En lugar de esperar un timeout largo (30-60s), el cliente recibe una respuesta inmediata cuando el circuito esta abierto, liberando hilos y recursos.</li>
+                <li><span class="highlight-green">Recuperacion automatica:</span> El estado HALF-OPEN permite verificar periodicamente si el servicio se recupero, restaurando el flujo normal sin intervencion manual.</li>
+                <li><span class="highlight-green">Monitoreo en tiempo real:</span> El CB actua como punto de observabilidad: tiempos de respuesta, tasa de errores, estado del circuito y alertas en tiempo real.</li>
+                <li><span class="highlight-green">Degradacion controlada (Fallback):</span> Permite devolver respuestas alternativas (cache, valores por defecto) en lugar de errores, mejorando la experiencia del usuario.</li>
+                <li><span class="highlight-green">Proteccion contra sobrecarga:</span> Evita enviar miles de peticiones a un servicio saturado, dandole tiempo para recuperarse en lugar de empeorarlo.</li>
+            </ul>
+        </div>
+        <div class="slide-footer">Universidad EIA · Circuit Breaker</div>
+    </div>
+
+    <!-- SLIDE 9: DESVENTAJAS -->
+    <div class="slide">
+        <div class="content">
+            <h2>Desventajas del Circuit Breaker</h2>
+            <ul>
+                <li><span class="highlight-red">Complejidad adicional:</span> Agrega una capa extra de logica al sistema. Gestionar los estados (OPEN, CLOSED, HALF-OPEN), umbrales y temporizadores requiere configuracion y mantenimiento cuidadoso.</li>
+                <li><span class="highlight-red">Dificultad en el testing:</span> Simular escenarios de fallo realistas es complejo. No basta con probar el cierre del circuito, hay que validar multiples respuestas de fallback y transiciones de estado.</li>
+                <li><span class="highlight-red">Ajuste fino de parametros:</span> Calibrar umbrales de fallo, tiempos de espera y numero de reintentos requiere conocimiento profundo del comportamiento del sistema. Valores mal ajustados causan falsos positivos o deteccion tardia.</li>
+                <li><span class="highlight-red">No apto para recursos locales:</span> Este patron esta disenado para recursos remotos. Usarlo para operaciones en memoria o servicios locales agrega overhead innecesario.</li>
+                <li><span class="highlight-red">Requiere infraestructura:</span> Implementarlo correctamente en produccion requiere tecnologias como service mesh (Istio) o librerias especializadas. No es trivial hacerlo "a mano".</li>
+                <li><span class="highlight-red">Latencia al reiniciar:</span> Esperar a que el circuito pase por HALF-OPEN puede introducir retrasos inaceptables en sistemas que requieren recuperacion rapida.</li>
+            </ul>
+        </div>
+        <div class="slide-footer">Universidad EIA · Circuit Breaker</div>
+    </div>
+
+    <!-- SLIDE 10: CUANDO USARLO -->
+    <div class="slide">
+        <div class="content">
+            <h2>Cuando usar y cuando NO usar</h2>
+            <div class="two-col">
+                <div class="col">
+                    <h3 style="color:#27ae60;margin-bottom:1rem;font-size:1.4rem">SI usar cuando:</h3>
+                    <ul style="font-size:1.05rem">
+                        <li>Servicios se comunican por <strong>red</strong> (HTTP, gRPC)</li>
+                        <li>Dependes de <strong>APIs externas</strong> o de terceros</li>
+                        <li>Quieres prevenir <strong>fallos en cascada</strong></li>
+                        <li>Servicios con <strong>alta latencia</strong> variable</li>
+                        <li>Necesitas <strong>degradacion controlada</strong></li>
+                        <li>Arquitecturas de <strong>microservicios</strong></li>
+                    </ul>
+                </div>
+                <div class="col">
+                    <h3 style="color:#c0392b;margin-bottom:1rem;font-size:1.4rem">NO usar cuando:</h3>
+                    <ul style="font-size:1.05rem">
+                        <li>Recursos <strong>locales</strong> en memoria</li>
+                        <li>Sustitucion de manejo de <strong>excepciones</strong></li>
+                        <li>Algoritmos de <strong>retry</strong> son suficientes</li>
+                        <li>Arquitecturas basadas en <strong>eventos/colas</strong> (ya tienen aislamiento)</li>
+                        <li>Recuperacion gestionada por <strong>infraestructura</strong> (load balancers, service mesh)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="slide-footer">Universidad EIA · Circuit Breaker</div>
+    </div>
+
+    <!-- SLIDE 11: HERRAMIENTAS -->
+    <div class="slide">
+        <div class="content">
+            <h2>Herramientas y Frameworks</h2>
+            <ul>
+                <li><span class="highlight">Resilience4j:</span> Libreria ligera y modular para Java, disenada para Spring Boot. Incluye Circuit Breaker, Retry, Rate Limiter y Bulkhead. Es el <strong>estandar actual</strong> en el ecosistema Java.</li>
+                <li><span class="highlight">Hystrix (Netflix):</span> Fue la libreria pionera para Circuit Breaker en Java. Actualmente en <strong>modo mantenimiento</strong> (deprecada). Se recomienda migrar a Resilience4j.</li>
+                <li><span class="highlight">Spring Cloud Circuit Breaker:</span> Capa de abstraccion de Spring que permite usar Resilience4j o Hystrix de forma intercambiable.</li>
+                <li><span class="highlight">Polly (.NET):</span> Para aplicaciones .NET, soporta Circuit Breaker, Retry, Timeout y otras estrategias de resiliencia.</li>
+                <li><span class="highlight">Istio:</span> Service mesh para Kubernetes que ofrece Circuit Breaker a nivel de red, sin modificar el codigo de la aplicacion.</li>
+            </ul>
+        </div>
+        <div class="slide-footer">Universidad EIA · Circuit Breaker</div>
+    </div>
+
+    <!-- SLIDE 12: CODIGO SPRING BOOT (Dependencias) -->
+    <div class="slide">
+        <div class="content">
+            <h2>Implementacion: Spring Boot + Resilience4j</h2>
+            <p>Configuracion en <code>pom.xml</code> y <code>application.yml</code>:</p>
+            <div class="code-block"><span class="cm">// pom.xml - Dependencias necesarias</span>
+&lt;<span class="kw">dependency</span>&gt;
+  &lt;<span class="kw">groupId</span>&gt;org.springframework.boot&lt;/<span class="kw">groupId</span>&gt;
+  &lt;<span class="kw">artifactId</span>&gt;spring-boot-starter-aop&lt;/<span class="kw">artifactId</span>&gt;
+&lt;/<span class="kw">dependency</span>&gt;
+&lt;<span class="kw">dependency</span>&gt;
+  &lt;<span class="kw">groupId</span>&gt;io.github.resilience4j&lt;/<span class="kw">groupId</span>&gt;
+  &lt;<span class="kw">artifactId</span>&gt;resilience4j-spring-boot3&lt;/<span class="kw">artifactId</span>&gt;
+&lt;/<span class="kw">dependency</span>&gt;
+
+<span class="cm"># application.yml - Configuracion del Circuit Breaker</span>
+<span class="kw">resilience4j.circuitbreaker</span>:
+  <span class="kw">instances</span>:
+    <span class="kw">paymentService</span>:
+      <span class="str">slidingWindowSize</span>: <span class="num">10</span>          <span class="cm"># Ventana de 10 llamadas</span>
+      <span class="str">failureRateThreshold</span>: <span class="num">50</span>       <span class="cm"># Abre si 50% fallan</span>
+      <span class="str">waitDurationInOpenState</span>: <span class="num">30s</span>   <span class="cm"># Espera 30s en OPEN</span>
+      <span class="str">permittedNumberOfCallsInHalfOpenState</span>: <span class="num">3</span>
+      <span class="str">automaticTransitionFromOpenToHalfOpenEnabled</span>: <span class="kw">true</span></div>
+        </div>
+        <div class="slide-footer">Universidad EIA · Circuit Breaker</div>
+    </div>
+
+    <!-- SLIDE 13: CODIGO SPRING BOOT (Servicio) -->
+    <div class="slide">
+        <div class="content">
+            <h2>Codigo: Servicio con Circuit Breaker</h2>
+            <div class="code-block"><span class="ann">@Service</span>
+<span class="kw">public class</span> PaymentService {
+
+    <span class="kw">private final</span> RestTemplate restTemplate;
+
+    <span class="ann">@CircuitBreaker</span>(name = <span class="str">"paymentService"</span>,
+                    fallbackMethod = <span class="str">"paymentFallback"</span>)
+    <span class="kw">public</span> PaymentResponse processPayment(PaymentRequest request) {
+        <span class="cm">// Llamada al servicio externo de pagos</span>
+        <span class="kw">return</span> restTemplate.postForObject(
+            <span class="str">"http://payment-api/api/payments"</span>,
+            request, PaymentResponse.<span class="kw">class</span>);
+    }
+
+    <span class="cm">// Metodo fallback: se ejecuta cuando el circuito esta OPEN</span>
+    <span class="kw">public</span> PaymentResponse paymentFallback(
+            PaymentRequest request, Throwable ex) {
+        <span class="kw">return new</span> PaymentResponse(
+            <span class="str">"PENDING"</span>,
+            <span class="str">"Servicio de pagos no disponible. "</span>
+            + <span class="str">"Su pago sera procesado cuando se restablezca."</span>);
+    }
+}</div>
+        </div>
+        <div class="slide-footer">Universidad EIA · Circuit Breaker</div>
+    </div>
+
+    <!-- SLIDE 14: CODIGO CONTROLLER -->
+    <div class="slide">
+        <div class="content">
+            <h2>Codigo: Controller y Monitoreo</h2>
+            <div class="code-block"><span class="ann">@RestController</span>
+<span class="ann">@RequestMapping</span>(<span class="str">"/api/payments"</span>)
+<span class="kw">public class</span> PaymentController {
+
+    <span class="ann">@Autowired</span>
+    <span class="kw">private</span> PaymentService paymentService;
+    <span class="ann">@Autowired</span>
+    <span class="kw">private</span> CircuitBreakerRegistry circuitBreakerRegistry;
+
+    <span class="ann">@PostMapping</span>
+    <span class="kw">public</span> ResponseEntity&lt;PaymentResponse&gt; pay(
+            <span class="ann">@RequestBody</span> PaymentRequest request) {
+        <span class="kw">return</span> ResponseEntity.ok(
+            paymentService.processPayment(request));
+    }
+
+    <span class="cm">// Endpoint para consultar el estado del Circuit Breaker</span>
+    <span class="ann">@GetMapping</span>(<span class="str">"/circuit-status"</span>)
+    <span class="kw">public</span> Map&lt;String, String&gt; getStatus() {
+        CircuitBreaker cb = circuitBreakerRegistry
+            .circuitBreaker(<span class="str">"paymentService"</span>);
+        <span class="kw">return</span> Map.of(
+            <span class="str">"state"</span>, cb.getState().name(),
+            <span class="str">"failureRate"</span>,
+                String.valueOf(cb.getMetrics().getFailureRate()),
+            <span class="str">"calls"</span>,
+                String.valueOf(cb.getMetrics()
+                    .getNumberOfBufferedCalls()));
+    }
+}</div>
+        </div>
+        <div class="slide-footer">Universidad EIA · Circuit Breaker</div>
+    </div>
+
+    <!-- SLIDE 15: COMPARATIVA -->
+    <div class="slide">
+        <div class="content">
+            <h2>Circuit Breaker vs Retry Pattern</h2>
+            <p>Es importante entender que estos patrones son <strong>complementarios, no sustitutos</strong>. Se pueden combinar, pero la logica de retry debe respetar las excepciones del Circuit Breaker:</p>
+            <div class="two-col">
+                <div class="col">
+                    <h3 style="color:var(--eia-blue);margin-bottom:.8rem;font-size:1.2rem">Retry Pattern</h3>
+                    <ul style="font-size:1rem">
+                        <li>Reintenta una operacion con la <strong>expectativa de que tendra exito</strong></li>
+                        <li>Ideal para <strong>fallos transitorios</strong> breves</li>
+                        <li>Puede empeorar una situacion si el servicio esta caido</li>
+                    </ul>
+                </div>
+                <div class="col">
+                    <h3 style="color:var(--eia-gold);margin-bottom:.8rem;font-size:1.2rem">Circuit Breaker</h3>
+                    <ul style="font-size:1rem">
+                        <li><strong>Previene</strong> realizar operaciones que probablemente fallaran</li>
+                        <li>Ideal para <strong>fallos persistentes</strong> o prolongados</li>
+                        <li>Protege al sistema dando tiempo al servicio para recuperarse</li>
+                    </ul>
+                </div>
+            </div>
+            <p style="margin-top:1rem;font-size:1.1rem"><strong>Combinacion ideal:</strong> Usar Retry para fallos transitorios <em>dentro</em> del Circuit Breaker. Si los reintentos fallan repetidamente, el CB se abre y detiene los intentos.</p>
+        </div>
+        <div class="slide-footer">Universidad EIA · Circuit Breaker</div>
+    </div>
+
+    <!-- SLIDE 16: REFERENCIAS -->
+    <div class="slide">
+        <div class="content">
+            <h2>Referencias</h2>
+            <div class="references">
+                <ul>
+                    <li><a href="https://learn.microsoft.com/en-us/azure/architecture/patterns/circuit-breaker" target="_blank">Microsoft Azure — "Circuit Breaker Pattern"</a> — Azure Architecture Center</li>
+                    <li><a href="https://www.redhat.com/en/blog/circuit-breaker-architecture-pattern" target="_blank">Red Hat — "The pros and cons of the Circuit Breaker architecture pattern"</a> — Bob Reselman</li>
+                    <li><a href="https://www.oscarblancarteblog.com/2018/12/04/circuit-breaker-pattern/" target="_blank">Oscar Blancarte — "Circuit Breaker Pattern"</a> — Software Architecture Blog</li>
+                    <li><a href="https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/circuit-breaker.html" target="_blank">AWS — "Circuit Breaker Pattern"</a> — Prescriptive Guidance</li>
+                    <li><a href="https://www.geeksforgeeks.org/system-design/what-is-circuit-breaker-pattern-in-microservices/" target="_blank">GeeksForGeeks — "Circuit Breaker Pattern in Microservices"</a></li>
+                </ul>
+            </div>
+            <br>
+            <div style="text-align:center;">
+                <img src="https://www.eia.edu.co/wp-content/uploads/2023/07/Logo-principal-scaled.webp" alt="Logo EIA" class="logo">
+                <p style="font-size:1.1rem; color:#aaa;">Universidad EIA · Ingenieria de Sistemas y Computacion · 2026</p>
+                <p style="font-size:1rem; color:#ccc;">Usa las teclas izquierda/derecha para navegar</p>
+            </div>
+        </div>
+        <div class="slide-footer">Universidad EIA · Circuit Breaker</div>
+    </div>
+
+</div>
+
+<!-- NAVIGATION -->
+<div class="nav">
+    <div class="slide-counter" id="slideCounter">1 / 16</div>
+    <button onclick="prevSlide()" title="Anterior">&#9664;</button>
+    <button onclick="nextSlide()" title="Siguiente">&#9654;</button>
+</div>
+
+<div class="help-tip">Usa las teclas ← → para navegar</div>
+
+<script>
+    let currentSlide = 0;
+    const totalSlides = document.querySelectorAll('.slide').length;
+    const container = document.getElementById('slidesContainer');
+    const counter = document.getElementById('slideCounter');
+    const progressBar = document.getElementById('progressBar');
+
+    function goToSlide(n) {
+        if (n < 0 || n >= totalSlides) return;
+        currentSlide = n;
+        container.style.transform = `translateX(-${currentSlide * 100}vw)`;
+        counter.textContent = `${currentSlide + 1} / ${totalSlides}`;
+        progressBar.style.width = `${((currentSlide + 1) / totalSlides) * 100}%`;
+    }
+
+    function nextSlide() { goToSlide(currentSlide + 1); }
+    function prevSlide() { goToSlide(currentSlide - 1); }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+            e.preventDefault(); nextSlide();
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+            e.preventDefault(); prevSlide();
+        } else if (e.key === 'Home') {
+            e.preventDefault(); goToSlide(0);
+        } else if (e.key === 'End') {
+            e.preventDefault(); goToSlide(totalSlides - 1);
+        }
+    });
+
+    goToSlide(0);
+</script>
+
+</body>
+</html>

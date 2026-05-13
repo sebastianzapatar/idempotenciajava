@@ -1,0 +1,40 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: circuit-breaker-demo
+
+# Configuracion del Circuit Breaker con Resilience4j
+resilience4j:
+  circuitbreaker:
+    instances:
+      # Circuit Breaker para el servicio de pagos
+      paymentService:
+        # Numero de llamadas en la ventana deslizante para calcular la tasa de fallos
+        slidingWindowSize: 10
+        # Porcentaje de fallos para abrir el circuito (50% = 5 de 10 fallan -> OPEN)
+        failureRateThreshold: 50
+        # Tiempo que el circuito permanece OPEN antes de pasar a HALF-OPEN
+        waitDurationInOpenState: 30s
+        # Numero de llamadas permitidas en estado HALF-OPEN para probar recuperacion
+        permittedNumberOfCallsInHalfOpenState: 3
+        # Transicion automatica de OPEN a HALF-OPEN cuando expira el temporizador
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        # Registrar el resultado de las llamadas como eventos
+        registerHealthIndicator: true
+        # Tipo de ventana deslizante: COUNT_BASED (por cantidad) o TIME_BASED (por tiempo)
+        slidingWindowType: COUNT_BASED
+
+# Actuator: exponer endpoints de monitoreo del Circuit Breaker
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,circuitbreakers,circuitbreakerevents
+  endpoint:
+    health:
+      show-details: always
+  health:
+    circuitbreakers:
+      enabled: true
