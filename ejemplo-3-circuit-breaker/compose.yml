@@ -1,0 +1,77 @@
+# ============================================================
+# Docker Compose - Ejemplo 3: Circuit Breaker con Microservicios
+# ============================================================
+# Arquitectura:
+#   frontend (React) → order-service (Spring Boot)
+#                           ↓ (HTTP via Feign + Circuit Breaker)
+#                       payment-service (Spring Boot)
+#                           ↑
+#   Ambos servicios se registran en Eureka Server
+#
+# Flujo:
+# 1. El frontend envia ordenes al order-service
+# 2. order-service llama al payment-service via OpenFeign (Eureka)
+# 3. Si payment-service falla, el Circuit Breaker (Resilience4j) se activa
+# 4. En fallback, la orden queda como PAYMENT_PENDING
+# 5. Se puede desactivar payment-service via toggle para demostrar el CB
+#
+# Puertos:
+# - 8761: Eureka Dashboard
+# - 8081: Order Service API + H2 Console
+# - 8082: Payment Service API + H2 Console
+# - 5175: Frontend React
+# ============================================================
+
+services:
+
+  # ---- Eureka Server: registro y descubrimiento de servicios ----
+  eureka-server:
+    build:
+      context: ./eureka-server
+      dockerfile: Dockerfile
+    ports:
+      - "8761:8761"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ---- Payment Service: microservicio de pagos ----
+  payment-service:
+    build:
+      context: ./payment-service
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      # Conectar al Eureka Server usando el nombre del servicio en Docker
+      EUREKA_URI: http://eureka-server:8761/eureka
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
+  # ---- Order Service: microservicio de ordenes con Circuit Breaker ----
+  order-service:
+    build:
+      context: ./order-service
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      EUREKA_URI: http://eureka-server:8761/eureka
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
+  # ---- Frontend React: interfaz para probar el Circuit Breaker ----
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5175:5175"
+    depends_on:
+      - order-service
+      - payment-service

@@ -1,0 +1,17 @@
+server:
+  port: 8761
+
+spring:
+  application:
+    name: eureka-server
+
+# Configuracion de Eureka Server
+# Como este ES el servidor, no necesita registrarse consigo mismo
+eureka:
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+  server:
+    # Deshabilitar modo de autopreservacion para desarrollo
+    # (en produccion se deja habilitado)
+    enable-self-preservation: false

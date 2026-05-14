@@ -1,0 +1,74 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: order-service
+
+  # Configuracion de H2 (base de datos en memoria)
+  datasource:
+    url: jdbc:h2:mem:orderdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  # JPA: crear tablas automaticamente desde las entidades
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  # Habilitar consola web de H2
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: true
+
+# Eureka Client: registrarse y descubrir otros servicios
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true
+
+# Configuracion del Circuit Breaker con Resilience4j
+resilience4j:
+  circuitbreaker:
+    instances:
+      # Circuit Breaker para las llamadas al payment-service
+      paymentService:
+        # Numero de llamadas en la ventana deslizante
+        slidingWindowSize: 10
+        # Porcentaje de fallos para abrir el circuito
+        failureRateThreshold: 50
+        # Tiempo que el circuito permanece OPEN antes de pasar a HALF-OPEN
+        waitDurationInOpenState: 30s
+        # Llamadas permitidas en HALF-OPEN para probar recuperacion
+        permittedNumberOfCallsInHalfOpenState: 3
+        # Transicion automatica de OPEN a HALF-OPEN
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        # Registrar indicador de salud
+        registerHealthIndicator: true
+        # Tipo de ventana: por cantidad de llamadas
+        slidingWindowType: COUNT_BASED
+        # Numero minimo de llamadas antes de calcular la tasa de fallos
+        minimumNumberOfCalls: 5
+
+# Actuator: exponer endpoints de monitoreo del Circuit Breaker
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,circuitbreakers,circuitbreakerevents
+  endpoint:
+    health:
+      show-details: always
+  health:
+    circuitbreakers:
+      enabled: true
